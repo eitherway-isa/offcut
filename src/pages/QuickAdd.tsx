@@ -77,11 +77,6 @@ export function QuickAdd() {
           <label>
             Material
             <input required list="materials" value={sticky.material} onChange={(e) => set('material', e.target.value)} />
-            <datalist id="materials">
-              {['Birch plywood', 'Poplar plywood', 'MDF', 'OSB', 'Melamine', 'Oak', 'Beech', 'Pine'].map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
           </label>
           <label>
             Thickness (mm)

@@ -39,3 +39,11 @@ button:disabled { opacity: .6; }
   .sticker { display: flex; align-items: center; gap: 2mm; padding: 3mm; overflow: hidden; color: #000; font: 8pt/1.25 system-ui, sans-serif; }
   .sticker-id { font-weight: 700; font-size: 11pt; }
 }
+.spread { justify-content: space-between; align-items: center; }
+button.small { padding: 8px 12px; width: auto; flex: none; }
+button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.part { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.part select { flex: 1; }
+.leftover { align-items: center; } .leftover input[type=text], .leftover input[inputmode] { width: 90px; flex: 1; }
+.leftover input[type=checkbox] { width: 20px; flex: none; }
+.topnav { overflow-x: auto; }

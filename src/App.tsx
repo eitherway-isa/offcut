@@ -7,6 +7,8 @@ import { StockList } from './pages/StockList'
 import { QuickAdd } from './pages/QuickAdd'
 import { PieceDetail } from './pages/PieceDetail'
 import { Labels } from './pages/Labels'
+import { Projects } from './pages/Projects'
+import { ProjectDetail } from './pages/ProjectDetail'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -25,14 +27,20 @@ export default function App() {
       <nav className="topnav">
         <NavLink to="/" end>Stock</NavLink>
         <NavLink to="/add">Quick add</NavLink>
+        <NavLink to="/projects">Projects</NavLink>
         <NavLink to="/labels">Labels</NavLink>
       </nav>
+      <datalist id="materials">
+        {['Birch plywood', 'Poplar plywood', 'MDF', 'OSB', 'Melamine', 'Oak', 'Beech', 'Pine'].map((m) => <option key={m} value={m} />)}
+      </datalist>
       <main>
         <Routes>
           <Route path="/" element={<StockList />} />
           <Route path="/add" element={<QuickAdd />} />
           <Route path="/p/:label" element={<PieceDetail />} />
           <Route path="/labels" element={<Labels />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:id" element={<ProjectDetail />} />
         </Routes>
       </main>
     </HashRouter>

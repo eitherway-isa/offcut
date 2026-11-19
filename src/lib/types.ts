@@ -22,3 +22,26 @@ export interface Piece {
 
 export type NewPiece = Pick<Piece, 'kind' | 'material' | 'thickness_mm' | 'length_mm' | 'width_mm' | 'grain'> &
   Partial<Pick<Piece, 'location' | 'notes' | 'source_project_id'>>
+
+export type ProjectStatus = 'planning' | 'in_progress' | 'done'
+
+export interface Project {
+  id: string
+  name: string
+  status: ProjectStatus
+  notes: string | null
+  created_at: string
+  finished_at: string | null
+}
+
+export interface Part {
+  id: string
+  project_id: string
+  name: string
+  material: string
+  thickness_mm: number
+  length_mm: number
+  width_mm: number
+  grain_matters: boolean
+  piece_id: string | null
+}
