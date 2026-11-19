@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Served from GitHub Pages at https://eitherway-isa.github.io/offcut/
+// BASE_PATH is '/offcut/' on GitHub Pages; hosts that serve from the root
+// (Cloudflare Pages, Vercel, Netlify) can leave it unset.
 export default defineConfig({
-  base: '/offcut/',
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react()],
 })

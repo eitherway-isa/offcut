@@ -9,6 +9,7 @@ import { PieceDetail } from './pages/PieceDetail'
 import { Labels } from './pages/Labels'
 import { Projects } from './pages/Projects'
 import { ProjectDetail } from './pages/ProjectDetail'
+import { Account } from './pages/Account'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -29,6 +30,7 @@ export default function App() {
         <NavLink to="/add">Quick add</NavLink>
         <NavLink to="/projects">Projects</NavLink>
         <NavLink to="/labels">Labels</NavLink>
+        <NavLink to="/account">Account</NavLink>
       </nav>
       <datalist id="materials">
         {['Birch plywood', 'Poplar plywood', 'MDF', 'OSB', 'Melamine', 'Oak', 'Beech', 'Pine'].map((m) => <option key={m} value={m} />)}
@@ -41,6 +43,7 @@ export default function App() {
           <Route path="/labels" element={<Labels />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
+          <Route path="/account" element={<Account />} />
         </Routes>
       </main>
     </HashRouter>
