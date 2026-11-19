@@ -15,6 +15,7 @@ export interface Piece {
   status: PieceStatus
   notes: string | null
   source_project_id: string | null
+  label_printed_at: string | null
   created_at: string
   updated_at: string
 }

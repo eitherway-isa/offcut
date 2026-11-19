@@ -16,13 +16,26 @@ a { color: inherit; text-decoration: none; }
 .topnav a.active { background: var(--accent); color: var(--accent-fg); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
-.row { display: flex; gap: 8px; } .row input { flex: 1; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border: 0; padding: 0; margin: 0; }
+.row { display: flex; gap: 8px; } .row input { flex: 1; } .row select { width: auto; }
+.grid2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; border: 0; padding: 0; margin: 0; }
 .span2 { grid-column: span 2; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
-input, select, button { font: inherit; font-size: 1rem; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-width: 0; }
+input, select, button { font: inherit; font-size: 1rem; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); min-width: 0; width: 100%; }
 .big input { font-size: 1.6rem; text-align: center; }
 button { background: var(--accent); color: var(--accent-fg); border: 0; font-weight: 600; padding: 14px; cursor: pointer; }
 button:disabled { opacity: .6; }
 .plain { list-style: none; margin: 0; padding: 0; } .cards { display: flex; flex-direction: column; gap: 8px; }
 .muted { color: var(--muted); font-size: .9rem; } .error { color: var(--error); }
+.check { flex-direction: row; align-items: center; gap: 10px; padding: 6px 0; color: var(--fg); font-size: 1rem; }
+.check input { flex: none; width: 20px; height: 20px; }
+.print-only { display: none; }
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: #fff; }
+  .topnav, .no-print { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .print-only { display: block; }
+  .sheet { display: grid; width: 210mm; height: 297mm; page-break-after: always; overflow: hidden; }
+  .sticker { display: flex; align-items: center; gap: 2mm; padding: 3mm; overflow: hidden; color: #000; font: 8pt/1.25 system-ui, sans-serif; }
+  .sticker-id { font-weight: 700; font-size: 11pt; }
+}
