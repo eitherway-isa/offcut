@@ -29,3 +29,7 @@ create index pieces_lookup on pieces (status, material, thickness_mm);
 alter table pieces enable row level security;
 create policy "signed-in users manage pieces" on pieces
   for all to authenticated using (true) with check (true);
+
+-- Expose the table to the Data API for signed-in users (RLS still applies).
+grant select, insert, update, delete on pieces to authenticated;
+grant usage on sequence piece_label_seq to authenticated;
