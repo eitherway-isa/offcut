@@ -5,6 +5,7 @@ import type { Piece } from '../lib/types'
 
 // Common A4 sticker sheets. Sizes in mm.
 const SHEETS = {
+  '3x8-36': { name: '3 × 8 (70 × 36 mm)', cols: 3, rows: 8, w: 70, h: 36, top: 4.5, left: 0, gapX: 0, gapY: 0 },
   '3x8': { name: '3 × 8 (70 × 37 mm, e.g. Avery 3474 / Herma 4453)', cols: 3, rows: 8, w: 70, h: 37, top: 0.5, left: 0, gapX: 0, gapY: 0 },
   '3x7': { name: '3 × 7 (63.5 × 38.1 mm, e.g. Avery L7160)', cols: 3, rows: 7, w: 63.5, h: 38.1, top: 15.15, left: 7.2, gapX: 2.5, gapY: 0 },
   '2x7': { name: '2 × 7 (99.1 × 38.1 mm, e.g. Avery L7163)', cols: 2, rows: 7, w: 99.1, h: 38.1, top: 15.15, left: 4.65, gapX: 2.5, gapY: 0 },
@@ -14,7 +15,7 @@ type SheetKey = keyof typeof SHEETS
 export function Labels() {
   const [pieces, setPieces] = useState<Piece[] | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [sheetKey, setSheetKey] = useState<SheetKey>('3x8')
+  const [sheetKey, setSheetKey] = useState<SheetKey>('3x8-36')
   const [skip, setSkip] = useState(0) // stickers already used on a partial sheet
   const [error, setError] = useState<string | null>(null)
 
@@ -100,7 +101,7 @@ export function Labels() {
                         {p.notes && <div className="sticker-notes">{p.notes}</div>}
                         <div className="sticker-id">{p.label}</div>
                       </div>
-                      <QRCodeSVG value={pieceUrl(p.label)} size={256} marginSize={0} style={{ width: '17mm', height: '17mm', flex: 'none' }} />
+                      <QRCodeSVG value={pieceUrl(p.label)} size={256} marginSize={0} style={{ width: '15mm', height: '15mm', flex: 'none' }} />
                     </div>
                   </>
                 )}
