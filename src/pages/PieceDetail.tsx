@@ -15,7 +15,7 @@ export function PieceDetail() {
     getPiece(label).then(setPiece, (e) => setError(e.message))
   }, [label])
 
-  async function save(changes: PieceEdits) {
+  async function save(changes: Partial<PieceEdits>) {
     if (!piece) return
     try {
       await updatePiece(piece.id, changes)
@@ -42,7 +42,11 @@ export function PieceDetail() {
             {piece.location && ` · ${piece.location}`} · {piece.status}
           </p>
           {piece.notes && <p className="notes">{piece.notes}</p>}
-          <button onClick={() => setEditing(true)}>Edit</button>
+          <div className="row">
+            {piece.status !== 'used' && <button onClick={() => save({ status: 'used' })}>Mark as used</button>}
+            {piece.status === 'used' && <button onClick={() => save({ status: 'available' })}>Back in stock</button>}
+            <button className="ghost" onClick={() => setEditing(true)}>Edit</button>
+          </div>
         </>
       )}
       {error && <p className="error">{error}</p>}

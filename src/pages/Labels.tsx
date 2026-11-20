@@ -92,12 +92,13 @@ export function Labels() {
               <div key={j} className="sticker">
                 {p && (
                   <>
-                    <QRCodeSVG value={pieceUrl(p.label)} size={256} style={{ height: `${sheet.h - 8}mm`, width: 'auto' }} />
-                    <div className="sticker-text">
-                      <div className="sticker-id">{p.label}</div>
-                      <div>{p.material}</div>
-                      <div>{p.length_mm} × {p.width_mm}</div>
-                      <div>{p.thickness_mm} mm{p.grain !== 'none' ? ` · grain ${p.grain === 'length' ? '↔' : '↕'}` : ''}</div>
+                    <div className="sticker-dims">{p.length_mm} × {p.width_mm} × {p.thickness_mm}</div>
+                    <div className="sticker-bottom">
+                      <div className="sticker-text">
+                        <div>{p.material}</div>
+                        <div className="sticker-id">{p.label}</div>
+                      </div>
+                      <QRCodeSVG value={pieceUrl(p.label)} size={256} marginSize={0} style={{ width: '17mm', height: '17mm', flex: 'none' }} />
                     </div>
                   </>
                 )}
