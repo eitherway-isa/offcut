@@ -44,4 +44,5 @@ export interface Part {
   width_mm: number
   grain_matters: boolean
   piece_id: string | null
+  notes?: string | null
 }

@@ -29,6 +29,14 @@ export async function updateProject(id: string, changes: Partial<Project>): Prom
 }
 
 export async function addParts(parts: Omit<Part, 'id' | 'piece_id'>[]): Promise<Part[]> {
+  // Older databases may not have the notes column yet (migration 0005); retry without it.
+  const first = await supabase.from('project_parts').insert(parts).select()
+  if (first.error && /notes/.test(first.error.message)) {
+    parts = parts.map(({ notes: _n, ...p }) => { void _n; return p })
+  } else {
+    if (first.error) throw first.error
+    return first.data as Part[]
+  }
   const { data, error } = await supabase.from('project_parts').insert(parts).select()
   if (error) throw error
   return data as Part[]

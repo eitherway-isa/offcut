@@ -78,7 +78,13 @@ textarea { font: inherit; font-size: 1rem; padding: 10px; border-radius: 8px; bo
   .stock-cards { display: none; }
 }
 .topnav a { white-space: nowrap; flex: none; }
-.preview { width: 100%; border-collapse: collapse; font-size: .9rem; display: block; overflow-x: auto; }
+.preview-wrap { overflow-x: auto; }
+.preview { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.preview tr.excluded td { opacity: .4; text-decoration: line-through; }
+.preview input[type=checkbox] { width: 18px; height: 18px; padding: 0; }
+.map-row { flex-direction: row; align-items: center; gap: 10px; color: var(--fg); }
+.map-row span { flex: 1; min-width: 0; font-size: .9rem; }
+.map-row input { flex: 1; }
 .preview th, .preview td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
 .preview th { color: var(--muted); }
 input[type=file] { padding: 8px; }

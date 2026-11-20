@@ -53,7 +53,7 @@ export function ProjectDetail() {
     <div className="stack">
       <h1>{project.name}</h1>
       {!done && <AddParts projectId={id} onAdded={reload} lastPart={parts[parts.length - 1]} />}
-      {!done && <ImportParts projectId={id} onAdded={reload} />}
+      {!done && <ImportParts projectId={id} onAdded={reload} stockMaterials={[...new Set(pieces.map((p) => p.material))].sort()} />}
       <div className="card stack">
         <div className="row spread">
           <h2>Cut list ({assigned}/{parts.length} from stock)</h2>
@@ -71,6 +71,7 @@ export function ProjectDetail() {
                 <div>
                   <strong>{part.name}</strong> {part.material} {formatSize(part)}
                   {part.grain_matters ? '' : <span className="muted"> · any grain</span>}
+                  {part.notes && <div className="muted">{part.notes}</div>}
                 </div>
                 {done ? (
                   <div className="muted">{current ? `From ${current.label}` : 'New material'}</div>

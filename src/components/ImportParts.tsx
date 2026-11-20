@@ -2,29 +2,47 @@ import { useMemo, useState } from 'react'
 import { addParts } from '../lib/projects'
 import { parseCutList, TEMPLATE_CSV } from '../lib/cutlistImport'
 
-export function ImportParts({ projectId, onAdded }: { projectId: string; onAdded: () => void }) {
+const NO_MATERIAL = '(no material in sheet)'
+
+export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId: string; onAdded: () => void; stockMaterials: string[] }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
-  const [material, setMaterial] = useState('')
+  const [mapping, setMapping] = useState<Record<string, string>>({})
   const [thickness, setThickness] = useState('18')
   const [grain, setGrain] = useState(true)
+  const [excluded, setExcluded] = useState<Set<number>>(new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const result = useMemo(
-    () => (text.trim() ? parseCutList(text, { material: material.trim(), thickness_mm: Number(thickness), grain_matters: grain }) : null),
-    [text, material, thickness, grain],
-  )
-  const total = result?.parts.reduce((n, p) => n + p.qty, 0) ?? 0
-  const needsMaterial = !!result?.missing.material && !material.trim()
+  const result = useMemo(() => (text.trim() ? parseCutList(text) : null), [text])
+  const parts = useMemo(() => result?.parts ?? [], [result])
+  const sheetMaterials = useMemo(() => [...new Set(parts.map((p) => p.material || NO_MATERIAL))], [parts])
+  const needsThickness = parts.some((p) => p.thickness_mm === null)
+  const needsGrain = parts.some((p) => p.grain_matters === null)
+
+  // Default mapping: keep the sheet's name if it already matches stock (ignoring case), else leave as written.
+  const mapped = (m: string) => {
+    if (mapping[m] !== undefined) return mapping[m]
+    if (m === NO_MATERIAL) return ''
+    return stockMaterials.find((s) => s.toLowerCase() === m.toLowerCase()) ?? m
+  }
+  const chosen = parts.filter((p) => !excluded.has(p.row))
+  const total = chosen.reduce((n, p) => n + p.qty, 0)
+  const missingMaterial = sheetMaterials.some((m) => !mapped(m).trim() && chosen.some((p) => (p.material || NO_MATERIAL) === m))
+
+  function setText2(t: string) {
+    setText(t)
+    setMapping({})
+    setExcluded(new Set())
+  }
 
   async function loadFile(file: File) {
     if (/\.xlsx?$/i.test(file.name)) {
-      setError('Excel files can\'t be read directly yet. In Excel, select the cells and paste them below, or save as CSV.')
+      setError("Excel files can't be read directly yet. Select the cells in Excel and paste them below, or save as CSV.")
       return
     }
     setError(null)
-    setText(await file.text())
+    setText2(await file.text())
   }
 
   function downloadTemplate() {
@@ -37,13 +55,22 @@ export function ImportParts({ projectId, onAdded }: { projectId: string; onAdded
   }
 
   async function importAll() {
-    if (!result) return
     setBusy(true)
     setError(null)
     try {
-      await addParts(result.parts.flatMap(({ qty, ...p }) =>
-        Array.from({ length: qty }, (_, i) => ({ ...p, project_id: projectId, name: qty > 1 ? `${p.name} ${i + 1}` : p.name }))))
-      setText('')
+      await addParts(chosen.flatMap((p) => {
+        const base = {
+          project_id: projectId,
+          material: mapped(p.material || NO_MATERIAL).trim(),
+          thickness_mm: p.thickness_mm ?? Number(thickness),
+          length_mm: p.length_mm,
+          width_mm: p.width_mm,
+          grain_matters: p.grain_matters ?? grain,
+          notes: p.notes || null,
+        }
+        return Array.from({ length: p.qty }, (_, i) => ({ ...base, name: p.qty > 1 ? `${p.name} ${i + 1}` : p.name }))
+      }))
+      setText2('')
       setOpen(false)
       onAdded()
     } catch (e) {
@@ -53,7 +80,7 @@ export function ImportParts({ projectId, onAdded }: { projectId: string; onAdded
     }
   }
 
-  if (!open) return <button className="ghost" onClick={() => setOpen(true)}>Import cut list (CSV or paste from Excel)</button>
+  if (!open) return <button className="ghost" onClick={() => setOpen(true)}>Import cut list (CSV or paste from a spreadsheet)</button>
 
   return (
     <div className="card stack">
@@ -62,34 +89,57 @@ export function ImportParts({ projectId, onAdded }: { projectId: string; onAdded
         <button className="small ghost" onClick={() => setOpen(false)}>Close</button>
       </div>
       <p className="muted">
-        Copy the cells from Excel or Google Sheets (including the header row) and paste them below, or choose a CSV file.
-        Columns it understands: Name, Material, Thickness, Length, Width, Qty, Grain. Only Length and Width are required.{' '}
+        Select the whole sheet in Excel or Google Sheets (title rows are fine), copy, and paste below. Or choose a CSV file.
+        It recognises columns like Materiaal, Aantal/#, Lengte/L, Breedte/B, Dikte/D, Nerf, Referentie and Opmerkingen, in English too.{' '}
         <a href="#" onClick={(e) => { e.preventDefault(); downloadTemplate() }}><u>Download a template</u></a>.
       </p>
       <input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && loadFile(e.target.files[0])} />
-      <textarea rows={6} placeholder={'Name\tMaterial\tThickness\tLength\tWidth\tQty\nSide\tBirch plywood\t18\t600\t300\t2'} value={text} onChange={(e) => setText(e.target.value)} />
-      {result && (result.missing.material || result.missing.thickness) && (
-        <div className="grid2">
-          {result.missing.material && <label>Material for all parts<input list="materials" value={material} onChange={(e) => setMaterial(e.target.value)} /></label>}
-          {result.missing.thickness && <label>Thickness for all parts (mm)<input inputMode="decimal" value={thickness} onChange={(e) => setThickness(e.target.value)} /></label>}
-        </div>
-      )}
-      {result && <label className="check"><input type="checkbox" checked={grain} onChange={(e) => setGrain(e.target.checked)} />Grain matters (when there's no Grain column)</label>}
-      {result?.problems.map((p) => <p key={p} className="error">{p}</p>)}
-      {result && result.parts.length > 0 && (
-        <table className="preview">
-          <thead><tr><th>Name</th><th>Material</th><th>T</th><th>L</th><th>W</th><th>Qty</th><th>Grain</th></tr></thead>
-          <tbody>
-            {result.parts.map((p, i) => (
-              <tr key={i}><td>{p.name}</td><td>{p.material || <span className="error">?</span>}</td><td>{p.thickness_mm}</td><td>{p.length_mm}</td><td>{p.width_mm}</td><td>{p.qty}</td><td>{p.grain_matters ? 'yes' : 'no'}</td></tr>
+      <textarea rows={5} placeholder="Paste here" value={text} onChange={(e) => setText2(e.target.value)} />
+      {result?.problems.map((p) => <p key={p} className="muted">{p}</p>)}
+
+      {parts.length > 0 && (
+        <>
+          <h2>Materials</h2>
+          <p className="muted">Match each material in the sheet to the name you use in your stock, so "Match from stock" can find offcuts.</p>
+          <div className="stack">
+            {sheetMaterials.map((m) => (
+              <label key={m} className="map-row">
+                <span>{m}</span>
+                <input list="stock-materials" value={mapped(m)} placeholder="Material" onChange={(e) => setMapping((s) => ({ ...s, [m]: e.target.value }))} />
+              </label>
             ))}
-          </tbody>
-        </table>
-      )}
-      {result && result.parts.length > 0 && (
-        <button disabled={busy || needsMaterial} onClick={importAll}>
-          {needsMaterial ? 'Fill in a material first' : busy ? 'Importing…' : `Import ${total} part${total === 1 ? '' : 's'}`}
-        </button>
+            <datalist id="stock-materials">{stockMaterials.map((m) => <option key={m} value={m} />)}</datalist>
+          </div>
+          {(needsThickness || needsGrain) && (
+            <div className="grid2">
+              {needsThickness && <label>Thickness where the sheet has none (mm)<input inputMode="decimal" value={thickness} onChange={(e) => setThickness(e.target.value)} /></label>}
+              {needsGrain && <label className="check"><input type="checkbox" checked={grain} onChange={(e) => setGrain(e.target.checked)} />Grain matters where the sheet doesn't say</label>}
+            </div>
+          )}
+          <div className="preview-wrap">
+            <table className="preview">
+              <thead><tr><th></th><th>Name</th><th>Material</th><th>T</th><th>L</th><th>W</th><th>Qty</th><th>Grain</th><th>Notes</th></tr></thead>
+              <tbody>
+                {parts.map((p) => (
+                  <tr key={p.row} className={excluded.has(p.row) ? 'excluded' : ''}>
+                    <td><input type="checkbox" checked={!excluded.has(p.row)} onChange={() => setExcluded((s) => { const n = new Set(s); if (n.has(p.row)) n.delete(p.row); else n.add(p.row); return n })} /></td>
+                    <td>{p.name}</td>
+                    <td>{mapped(p.material || NO_MATERIAL) || <span className="error">?</span>}</td>
+                    <td>{p.thickness_mm ?? thickness}</td>
+                    <td>{p.length_mm}</td>
+                    <td>{p.width_mm}</td>
+                    <td>{p.qty}</td>
+                    <td>{(p.grain_matters ?? grain) ? 'yes' : 'no'}</td>
+                    <td className="notes-cell">{p.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button disabled={busy || missingMaterial || total === 0} onClick={importAll}>
+            {missingMaterial ? 'Fill in every material first' : busy ? 'Importing…' : `Import ${total} part${total === 1 ? '' : 's'}`}
+          </button>
+        </>
       )}
       {error && <p className="error">{error}</p>}
     </div>
