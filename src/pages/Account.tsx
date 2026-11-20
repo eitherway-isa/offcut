@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { TidyMaterials } from '../components/TidyMaterials'
 
 export function Account() {
   const [email, setEmail] = useState('')
@@ -38,6 +39,7 @@ export function Account() {
         {message && <p>{message}</p>}
         {error && <p className="error">{error}</p>}
       </form>
+      <TidyMaterials />
       <button className="ghost" onClick={() => supabase.auth.signOut()}>Sign out</button>
     </div>
   )

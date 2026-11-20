@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { addParts } from '../lib/projects'
 import { parseCutList, TEMPLATE_CSV } from '../lib/cutlistImport'
+import { MATERIALS, normalizeMaterial } from '../lib/materials'
 
 const NO_MATERIAL = '(no material in sheet)'
 
@@ -20,11 +21,12 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
   const needsThickness = parts.some((p) => p.thickness_mm === null)
   const needsGrain = parts.some((p) => p.grain_matters === null)
 
-  // Default mapping: keep the sheet's name if it already matches stock (ignoring case), else leave as written.
+  // Default mapping: the stock name that matches (ignoring case), else the standard name.
   const mapped = (m: string) => {
     if (mapping[m] !== undefined) return mapping[m]
     if (m === NO_MATERIAL) return ''
-    return stockMaterials.find((s) => s.toLowerCase() === m.toLowerCase()) ?? m
+    const std = normalizeMaterial(m)
+    return stockMaterials.find((s) => s.toLowerCase() === m.toLowerCase() || s.toLowerCase() === std.toLowerCase()) ?? std
   }
   const chosen = parts.filter((p) => !excluded.has(p.row))
   const total = chosen.reduce((n, p) => n + p.qty, 0)
@@ -108,7 +110,7 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
                 <input list="stock-materials" value={mapped(m)} placeholder="Material" onChange={(e) => setMapping((s) => ({ ...s, [m]: e.target.value }))} />
               </label>
             ))}
-            <datalist id="stock-materials">{stockMaterials.map((m) => <option key={m} value={m} />)}</datalist>
+            <datalist id="stock-materials">{[...new Set([...MATERIALS, ...stockMaterials])].map((m) => <option key={m} value={m} />)}</datalist>
           </div>
           {(needsThickness || needsGrain) && (
             <div className="grid2">
