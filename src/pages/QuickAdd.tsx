@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addPiece, formatSize } from '../lib/pieces'
+import { addPieces, formatSize } from '../lib/pieces'
 import type { Grain, Piece, PieceKind } from '../lib/types'
 
 // Sticky fields are remembered between entries (and between visits) so that
@@ -26,6 +26,8 @@ export function QuickAdd() {
   const [sticky, setSticky] = useState<Sticky>(loadSticky)
   const [length, setLength] = useState('')
   const [width, setWidth] = useState('')
+  const [qty, setQty] = useState('1')
+  const [notes, setNotes] = useState('')
   const [added, setAdded] = useState<Piece[]>([])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -49,7 +51,7 @@ export function QuickAdd() {
       const l = Number(length)
       const w = Number(width)
       // Store the longer side as length; grain is stated relative to length.
-      const piece = await addPiece({
+      const piece = {
         kind: sticky.kind,
         material: sticky.material.trim(),
         thickness_mm: Number(sticky.thickness),
@@ -57,8 +59,13 @@ export function QuickAdd() {
         width_mm: Math.min(l, w),
         grain: l < w && sticky.grain !== 'none' ? (sticky.grain === 'length' ? 'width' : 'length') : sticky.grain,
         location: sticky.location.trim() || null,
-      })
-      setAdded((a) => [piece, ...a])
+        notes: notes.trim() || null,
+      } as const
+      const count = Math.min(50, Math.max(1, Math.round(Number(qty)) || 1))
+      const saved = await addPieces(Array.from({ length: count }, () => piece))
+      setAdded((a) => [...saved.reverse(), ...a])
+      setQty('1')
+      setNotes('')
       setLength('')
       setWidth('')
       lengthRef.current?.focus()
@@ -113,7 +120,17 @@ export function QuickAdd() {
             <input required inputMode="decimal" value={width} onChange={(e) => setWidth(e.target.value)} />
           </label>
         </div>
-        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save and next'}</button>
+        <div className="grid2">
+          <label>
+            Quantity
+            <input required inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
+          </label>
+          <label>
+            Notes
+            <input value={notes} placeholder="optional" onChange={(e) => setNotes(e.target.value)} />
+          </label>
+        </div>
+        <button type="submit" disabled={saving}>{saving ? 'Saving…' : Number(qty) > 1 ? `Save ${qty} pieces and next` : 'Save and next'}</button>
         {error && <p className="error">{error}</p>}
       </form>
       {added.length > 0 && (
@@ -122,7 +139,7 @@ export function QuickAdd() {
           <ul className="plain">
             {added.map((p) => (
               <li key={p.id}>
-                <strong>{p.label}</strong> {p.material} {formatSize(p)}
+                <strong>{p.label}</strong> {p.material} {formatSize(p)}{p.notes && <span className="muted"> · {p.notes}</span>}
               </li>
             ))}
           </ul>

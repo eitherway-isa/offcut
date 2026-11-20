@@ -23,6 +23,21 @@ export async function addPiece(piece: NewPiece): Promise<Piece> {
   return data as Piece
 }
 
+export async function addPieces(pieces: NewPiece[]): Promise<Piece[]> {
+  const { data, error } = await supabase.from('pieces').insert(pieces).select()
+  if (error) throw error
+  return (data as Piece[]).sort((a, b) => a.label.localeCompare(b.label))
+}
+
+/** Apply the same changes to many pieces at once. */
+export async function updatePieces(ids: string[], changes: Partial<Piece>): Promise<void> {
+  const { error } = await supabase
+    .from('pieces')
+    .update({ ...changes, updated_at: new Date().toISOString() })
+    .in('id', ids)
+  if (error) throw error
+}
+
 export async function updatePiece(id: string, changes: Partial<Piece>): Promise<void> {
   const { error } = await supabase
     .from('pieces')
