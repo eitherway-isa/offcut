@@ -96,6 +96,8 @@ export function Labels() {
                     <div className="sticker-bottom">
                       <div className="sticker-text">
                         <div>{p.material}</div>
+                        {p.location && <div className="sticker-loc">{p.location}</div>}
+                        {p.notes && <div className="sticker-notes">{p.notes}</div>}
                         <div className="sticker-id">{p.label}</div>
                       </div>
                       <QRCodeSVG value={pieceUrl(p.label)} size={256} marginSize={0} style={{ width: '17mm', height: '17mm', flex: 'none' }} />

@@ -36,12 +36,14 @@ button:disabled { opacity: .6; }
   main { padding: 0; max-width: none; }
   .print-only { display: block; }
   .sheet { display: grid; width: 210mm; height: 297mm; page-break-after: always; overflow: hidden; }
-  .sticker { display: flex; flex-direction: column; justify-content: space-between; padding: 3mm 4mm; overflow: hidden; color: #000; font: 9pt/1.2 system-ui, sans-serif; }
+  .sticker { display: flex; flex-direction: column; justify-content: space-between; padding: 3mm 4mm; overflow: hidden; color: #000; font: 8.5pt/1.2 system-ui, sans-serif; }
   .sticker-dims { font-weight: 800; font-size: 16pt; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
   .sticker-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 2mm; }
   .sticker-text { min-width: 0; overflow: hidden; }
   .sticker-text div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sticker-id { color: #555; font-size: 8pt; }
+  .sticker-id { color: #555; font-size: 7pt; }
+  .sticker-loc { font-weight: 700; }
+  .sticker-text .sticker-notes { font-size: 7.5pt; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.15; }
 }
 .spread { justify-content: space-between; align-items: center; }
 button.small { padding: 8px 12px; width: auto; flex: none; }
