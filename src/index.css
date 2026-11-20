@@ -74,3 +74,7 @@ textarea { font: inherit; font-size: 1rem; padding: 10px; border-radius: 8px; bo
   .stock-cards { display: none; }
 }
 .topnav a { white-space: nowrap; flex: none; }
+.preview { width: 100%; border-collapse: collapse; font-size: .9rem; display: block; overflow-x: auto; }
+.preview th, .preview td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.preview th { color: var(--muted); }
+input[type=file] { padding: 8px; }

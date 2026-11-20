@@ -4,6 +4,7 @@ import { addPiece, formatSize, listPieces, updatePiece } from '../lib/pieces'
 import { addParts, assignPiece, deletePart, getProject, updateProject } from '../lib/projects'
 import { autoAssign, candidates, suggestLeftovers } from '../lib/matching'
 import type { Part, Piece, Project } from '../lib/types'
+import { ImportParts } from '../components/ImportParts'
 
 interface Leftover { key: string; fromPieceId: string; material: string; thickness_mm: number; length_mm: number; width_mm: number; grain: Piece['grain']; keep: boolean }
 
@@ -52,6 +53,7 @@ export function ProjectDetail() {
     <div className="stack">
       <h1>{project.name}</h1>
       {!done && <AddParts projectId={id} onAdded={reload} lastPart={parts[parts.length - 1]} />}
+      {!done && <ImportParts projectId={id} onAdded={reload} />}
       <div className="card stack">
         <div className="row spread">
           <h2>Cut list ({assigned}/{parts.length} from stock)</h2>
