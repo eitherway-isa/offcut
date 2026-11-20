@@ -1,14 +1,13 @@
 import type { Part, Piece } from './types'
+import { materialMatches } from './materials'
 
 type PartSpec = Pick<Part, 'material' | 'thickness_mm' | 'length_mm' | 'width_mm' | 'grain_matters'>
 
 const KIND_ORDER = { offcut: 0, board: 1, sheet: 2 } as const
 
-const sameMaterial = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
-
 /** Can this part be cut from this piece (one part per piece, no nesting)? */
 export function fits(part: PartSpec, piece: Piece): boolean {
-  if (!sameMaterial(part.material, piece.material)) return false
+  if (!materialMatches(part.material, piece.material)) return false
   if (Math.abs(part.thickness_mm - piece.thickness_mm) > 0.5) return false
   const { length_mm: pl, width_mm: pw } = part
   const { length_mm: L, width_mm: W } = piece
@@ -45,20 +44,40 @@ export function autoAssign(parts: Part[], pieces: Piece[]): Map<string, string> 
 }
 
 /**
- * Suggested leftovers after cutting a part from a corner of a piece (one guillotine cut
- * across the full length, then one across the remaining strip). Tiny strips are dropped.
+ * Is a leftover worth keeping? Sheet goods: at least 45 wide (a hanging cleat) and 250 long,
+ * or at least 0.05 m², or a strip of 30+ wide (spacer) when 600+ long.
  */
-export function suggestLeftovers(part: PartSpec, piece: Piece, minMm = 50): { length_mm: number; width_mm: number }[] {
+export function isKeepable(length_mm: number, width_mm: number): boolean {
+  const l = Math.max(length_mm, width_mm), w = Math.min(length_mm, width_mm)
+  return (w >= 45 && l >= 250) || l * w >= 50_000 || (w >= 30 && l >= 600)
+}
+
+export interface LeftoverSuggestion { length_mm: number; width_mm: number; grain: Piece['grain']; keepable: boolean }
+
+/**
+ * Leftovers after cutting a part from a corner of a piece: first a rip along the full
+ * length, then a crosscut of the remaining strip. Each cut costs one kerf.
+ */
+export function suggestLeftovers(part: PartSpec, piece: Piece, kerf = 3): LeftoverSuggestion[] {
   const rotated = !(part.length_mm <= piece.length_mm && part.width_mm <= piece.width_mm) ||
     (part.grain_matters && piece.grain === 'width')
   const pl = rotated ? part.width_mm : part.length_mm
   const pw = rotated ? part.length_mm : part.width_mm
-  const kerf = 3
-  const out = [
-    { length_mm: piece.length_mm, width_mm: piece.width_mm - pw - kerf },
-    { length_mm: piece.length_mm - pl - kerf, width_mm: pw },
+  const rects = [
+    { a: piece.length_mm, b: piece.width_mm - pw - kerf },
+    { a: piece.length_mm - pl - kerf, b: pw },
   ]
-  return out
-    .filter((r) => r.length_mm >= minMm && r.width_mm >= minMm)
-    .map((r) => ({ length_mm: Math.max(r.length_mm, r.width_mm), width_mm: Math.min(r.length_mm, r.width_mm) }))
+  return rects
+    .filter((r) => r.a > 0 && r.b > 0)
+    .map((r) => {
+      // Store the longer side as length; grain follows the piece's length axis ("a").
+      const swap = r.b > r.a
+      const grain: Piece['grain'] = piece.grain === 'none' ? 'none' : swap === (piece.grain === 'length') ? 'width' : 'length'
+      return {
+        length_mm: Math.round(Math.max(r.a, r.b) * 10) / 10,
+        width_mm: Math.round(Math.min(r.a, r.b) * 10) / 10,
+        grain,
+        keepable: isKeepable(r.a, r.b),
+      }
+    })
 }

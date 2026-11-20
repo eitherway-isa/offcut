@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { TidyMaterials } from '../components/TidyMaterials'
+import { getSettings, saveSettings } from '../lib/settings'
 
 export function Account() {
   const [email, setEmail] = useState('')
@@ -39,8 +40,32 @@ export function Account() {
         {message && <p>{message}</p>}
         {error && <p className="error">{error}</p>}
       </form>
+      <Workshop />
       <TidyMaterials />
       <button className="ghost" onClick={() => supabase.auth.signOut()}>Sign out</button>
     </div>
+  )
+}
+
+function Workshop() {
+  const [kerf, setKerf] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  useEffect(() => { getSettings().then((s) => setKerf(String(s.kerf_mm))) }, [])
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await saveSettings({ kerf_mm: Number(kerf) })
+      setMessage('Saved.')
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err))
+    }
+  }
+  return (
+    <form className="card stack" onSubmit={save}>
+      <h2>Workshop</h2>
+      <label>Saw kerf (mm), used when calculating leftovers<input inputMode="decimal" required value={kerf} onChange={(e) => setKerf(e.target.value)} /></label>
+      <button type="submit">Save</button>
+      {message && <p className="muted">{message}</p>}
+    </form>
   )
 }

@@ -3,10 +3,12 @@ import { useParams } from 'react-router-dom'
 import { addPiece, formatSize, listPieces, updatePiece } from '../lib/pieces'
 import { addParts, assignPiece, deletePart, getProject, updateProject } from '../lib/projects'
 import { autoAssign, candidates, suggestLeftovers } from '../lib/matching'
+import { getSettings } from '../lib/settings'
+import { toBuyRows, toCsv, toTsv } from '../lib/toBuy'
 import type { Part, Piece, Project } from '../lib/types'
 import { ImportParts } from '../components/ImportParts'
 
-interface Leftover { key: string; fromPieceId: string; material: string; thickness_mm: number; length_mm: number; width_mm: number; grain: Piece['grain']; keep: boolean }
+interface Leftover { key: string; fromPieceId: string; material: string; thickness_mm: number; length_mm: number; width_mm: number; grain: Piece['grain']; keep: boolean; keepable: boolean }
 
 export function ProjectDetail() {
   const { id = '' } = useParams()
@@ -92,6 +94,7 @@ export function ProjectDetail() {
           })}
         </ul>
       </div>
+      {!done && parts.length > assigned && <ToBuy project={project} parts={parts} />}
       {!done && assigned > 0 && !finishing && (
         <button onClick={() => setFinishing(true)}>Project finished: update stock</button>
       )}
@@ -125,7 +128,7 @@ function AddParts({ projectId, onAdded, lastPart }: { projectId: string; onAdded
       <h2>Add part</h2>
       <div className="grid2">
         <label className="span2">Name<input required value={f.name} placeholder="e.g. Side panel" onChange={(e) => set('name', e.target.value)} /></label>
-        <label>Material<input required list="materials" value={f.material} onChange={(e) => set('material', e.target.value)} /></label>
+        <label>Material<input required list="part-materials" placeholder="or Any / Any MTX" value={f.material} onChange={(e) => set('material', e.target.value)} /></label>
         <label>Thickness (mm)<input required inputMode="decimal" value={f.thickness} onChange={(e) => set('thickness', e.target.value)} /></label>
         <label>Length (mm){f.grain && ' along grain'}<input required inputMode="decimal" value={f.length} onChange={(e) => set('length', e.target.value)} /></label>
         <label>Width (mm)<input required inputMode="decimal" value={f.width} onChange={(e) => set('width', e.target.value)} /></label>
@@ -142,15 +145,20 @@ function FinishProject({ project, parts, byId, onDone }: { project: Project; par
   const used = parts.filter((p) => p.piece_id && byId.has(p.piece_id))
   const [wentToPlan, setWentToPlan] = useState<boolean | null>(null)
   const [usedIds, setUsedIds] = useState(() => new Set(used.map((p) => p.piece_id!)))
-  const [leftovers, setLeftovers] = useState<Leftover[]>(() =>
-    used.flatMap((part) => {
-      const piece = byId.get(part.piece_id!)!
-      return suggestLeftovers(part, piece).map((r, i) => ({
-        key: `${piece.id}-${i}`, fromPieceId: piece.id, material: piece.material, thickness_mm: piece.thickness_mm,
-        grain: piece.grain, keep: true, ...r,
-      }))
-    }),
-  )
+  const [leftovers, setLeftovers] = useState<Leftover[]>([])
+  useEffect(() => {
+    getSettings().then(({ kerf_mm }) => setLeftovers(
+      used.flatMap((part) => {
+        const piece = byId.get(part.piece_id!)!
+        return suggestLeftovers(part, piece, kerf_mm).map((r, i) => ({
+          key: `${piece.id}-${i}`, fromPieceId: piece.id, material: piece.material, thickness_mm: piece.thickness_mm,
+          keep: r.keepable, ...r,
+        }))
+      }),
+    ))
+    // Only on open: the user edits the suggestions afterwards.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -194,7 +202,7 @@ function FinishProject({ project, parts, byId, onDone }: { project: Project; par
       {wentToPlan !== null && (
         <>
           <h2>New offcuts</h2>
-          <p className="muted">Suggested from what's left of each piece. Adjust the sizes to what you actually have, or untick scraps you binned.</p>
+          <p className="muted">Suggested from what's left of each piece, after kerf. Pieces below the minimum size (45 × 250, or a 30 wide strip of 600+) start unticked. Adjust the sizes to what you actually have.</p>
           {leftovers.filter((l) => usedIds.has(l.fromPieceId)).map((l) => (
             <div key={l.key} className="row leftover">
               <input type="checkbox" checked={l.keep} onChange={(e) => edit(l.key, { keep: e.target.checked })} />
@@ -202,12 +210,45 @@ function FinishProject({ project, parts, byId, onDone }: { project: Project; par
               <input inputMode="decimal" value={l.length_mm} onChange={(e) => edit(l.key, { length_mm: Number(e.target.value) })} />
               ×
               <input inputMode="decimal" value={l.width_mm} onChange={(e) => edit(l.key, { width_mm: Number(e.target.value) })} />
+              {!l.keepable && <span className="muted">scrap?</span>}
             </div>
           ))}
           <button disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Update stock and close project'}</button>
           {error && <p className="error">{error}</p>}
         </>
       )}
+    </div>
+  )
+}
+
+function ToBuy({ project, parts }: { project: Project; parts: Part[] }) {
+  const [copied, setCopied] = useState(false)
+  const rows = toBuyRows(parts)
+  const count = parts.filter((p) => !p.piece_id).length
+
+  function download() {
+    const url = URL.createObjectURL(new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Zaaglijst ${project.name} - te kopen.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function copy() {
+    await navigator.clipboard.writeText(toTsv(rows))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="card stack">
+      <h2>Still to buy ({count} part{count === 1 ? '' : 's'})</h2>
+      <p className="muted">Parts with no stock piece chosen, in the Zaaglijst atelier layout. Paste into your sheet or send the CSV to the shop.</p>
+      <div className="row">
+        <button className="ghost" onClick={copy}>{copied ? 'Copied' : 'Copy for Sheets/Excel'}</button>
+        <button className="ghost" onClick={download}>Download CSV</button>
+      </div>
     </div>
   )
 }

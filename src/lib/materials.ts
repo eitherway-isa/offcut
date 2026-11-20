@@ -1,7 +1,7 @@
 // Standard material names: type first, then wood or finish. No grade, brand or thickness.
 export const MATERIALS = [
   'MTX birch', 'MTX spruce', 'MTX poplar', 'MTX okoumé', 'MTX oak',
-  'MDF', 'MDF oak', 'MDF black', 'MDF MR', 'HDF', 'OSB', 'Melamine white',
+  'MDF', 'MDF oak', 'MDF black', 'MDF MR', 'HDF', 'OSB', 'Chipboard white', 'Chipboard black',
   'Oak', 'Beech', 'Ash', 'Pine', 'Walnut',
 ]
 
@@ -34,7 +34,26 @@ export function normalizeMaterial(raw: string): string {
     return 'MDF'
   }
   if (has(s, ['osb'])) return 'OSB'
-  if (has(s, ['melamine', 'melamin', 'gemelamineerd'])) return 'Melamine white'
+  if (has(s, ['melamine', 'melamin', 'gemelamineerd', 'spaanplaat', 'spaanplaten', 'chipboard', 'chip', 'particleboard'])) {
+    return has(s, ['zwart', 'black']) ? 'Chipboard black' : 'Chipboard white'
+  }
   if (species && !has(s, ['fineer', 'veneer'])) return species[0].toUpperCase() + species.slice(1)
   return raw.trim()
+}
+
+/** Wildcards for cut-list parts: "Any" matches every material, "Any MTX" every MTX, and so on. */
+export const ANY = 'Any'
+export const MATERIAL_FAMILIES = ['Any MTX', 'Any MDF', 'Any chipboard']
+export const PART_MATERIAL_OPTIONS = [ANY, ...MATERIAL_FAMILIES]
+
+/** Does a stock material satisfy what a part asks for? */
+export function materialMatches(requested: string, stock: string): boolean {
+  const r = requested.trim().toLowerCase()
+  const st = stock.trim().toLowerCase()
+  if (r === '' || r === 'any') return true
+  if (r.startsWith('any ')) {
+    const family = r.slice(4)
+    return st === family || st.startsWith(family + ' ')
+  }
+  return r === st
 }

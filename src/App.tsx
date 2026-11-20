@@ -10,7 +10,7 @@ import { Labels } from './pages/Labels'
 import { Projects } from './pages/Projects'
 import { ProjectDetail } from './pages/ProjectDetail'
 import { Account } from './pages/Account'
-import { MATERIALS } from './lib/materials'
+import { MATERIALS, PART_MATERIAL_OPTIONS } from './lib/materials'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -35,6 +35,9 @@ export default function App() {
       </nav>
       <datalist id="materials">
         {MATERIALS.map((m) => <option key={m} value={m} />)}
+      </datalist>
+      <datalist id="part-materials">
+        {[...PART_MATERIAL_OPTIONS, ...MATERIALS].map((m) => <option key={m} value={m} />)}
       </datalist>
       <main>
         <Routes>

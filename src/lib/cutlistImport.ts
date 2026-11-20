@@ -23,12 +23,18 @@ export interface ImportedPart {
   qty: number
   grain_matters: boolean | null // null = sheet doesn't say
   notes: string
+  /** Marked ALT: an alternative to the row(s) with the same reference code. */
+  alt: boolean
+  /** First word of the reference (e.g. "WB-B"), used to pair ALT rows with their original. */
+  code: string
 }
 
 export interface ImportResult {
   parts: ImportedPart[]
   problems: string[]
   headerRow: number
+  /** The sheet has a RESTEN row: the shop sends the offcuts home. */
+  offcutsComeHome: boolean
 }
 
 type Field = 'name' | 'code' | 'material' | 'thickness' | 'length' | 'width' | 'qty' | 'grain' | 'notes'
@@ -131,16 +137,19 @@ export function parseCutList(text: string): ImportResult {
     }
   }
   if (headerRow < 0) {
-    return { parts: [], problems: ["Couldn't find a header row with length and width columns (e.g. Length/Width, Lengte/Breedte or L/B)."], headerRow }
+    return { offcutsComeHome: false, parts: [], problems: ["Couldn't find a header row with length and width columns (e.g. Length/Width, Lengte/Breedte or L/B)."], headerRow }
   }
 
   const parts: ImportedPart[] = []
   let groupMaterial = ''
   let skippedNoSize = 0
+  let offcutsComeHome = false
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i]
     if (isEmptyRow(r)) { groupMaterial = ''; continue }
     const get = (f: Field) => (cols[f] >= 0 ? (r[cols[f]] ?? '').trim() : '')
+
+    if (/^resten\b/i.test(get('name'))) { offcutsComeHome = true; continue }
 
     const mat = get('material')
     if (mat && !isSheetInfo(mat)) groupMaterial = mat
@@ -166,11 +175,13 @@ export function parseCutList(text: string): ImportResult {
       width_mm: width,
       qty: Math.max(1, Math.round(num(get('qty')) || 1)),
       grain_matters: grain,
-      notes: get('notes'),
+      notes: /^alt$/i.test(get('notes')) ? '' : get('notes'),
+      alt: /^alt\b/i.test(get('notes')),
+      code: name.split(/\s+/)[0],
     })
   }
   if (skippedNoSize) problems.push(`${skippedNoSize} row${skippedNoSize === 1 ? '' : 's'} without a length and width were skipped.`)
-  return { parts, problems, headerRow: headerRow + 1 }
+  return { parts, problems, headerRow: headerRow + 1, offcutsComeHome }
 }
 
 export const TEMPLATE_CSV = 'Name;Material;Thickness;Length;Width;Qty;Grain;Notes\nSide panel;Birch plywood;18;600;300;2;yes;\nShelf;Birch plywood;18;564;280;3;yes;\nBack;MDF;6;600;564;1;no;groove 6 mm\n'

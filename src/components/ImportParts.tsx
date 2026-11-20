@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { addParts } from '../lib/projects'
 import { parseCutList, TEMPLATE_CSV } from '../lib/cutlistImport'
-import { MATERIALS, normalizeMaterial } from '../lib/materials'
+import { ANY, MATERIALS, PART_MATERIAL_OPTIONS, normalizeMaterial } from '../lib/materials'
 
 const NO_MATERIAL = '(no material in sheet)'
 
@@ -24,18 +24,30 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
   // Default mapping: the stock name that matches (ignoring case), else the standard name.
   const mapped = (m: string) => {
     if (mapping[m] !== undefined) return mapping[m]
-    if (m === NO_MATERIAL) return ''
+    if (m === NO_MATERIAL) return ANY
     const std = normalizeMaterial(m)
     return stockMaterials.find((s) => s.toLowerCase() === m.toLowerCase() || s.toLowerCase() === std.toLowerCase()) ?? std
   }
   const chosen = parts.filter((p) => !excluded.has(p.row))
   const total = chosen.reduce((n, p) => n + p.qty, 0)
-  const missingMaterial = sheetMaterials.some((m) => !mapped(m).trim() && chosen.some((p) => (p.material || NO_MATERIAL) === m))
 
   function setText2(t: string) {
     setText(t)
     setMapping({})
-    setExcluded(new Set())
+    // Alternatives start unticked; the original rows are imported.
+    setExcluded(new Set(t.trim() ? parseCutList(t).parts.filter((p) => p.alt).map((p) => p.row) : []))
+  }
+
+  // Ticking an ALT row unticks the rows it replaces (same reference code), and the other way round.
+  function toggleRow(p: (typeof parts)[number]) {
+    setExcluded((s) => {
+      const n = new Set(s)
+      if (n.has(p.row)) {
+        n.delete(p.row)
+        for (const q of parts) if (q.code === p.code && q.alt !== p.alt && parts.some((a) => a.alt && a.code === p.code)) n.add(q.row)
+      } else n.add(p.row)
+      return n
+    })
   }
 
   async function loadFile(file: File) {
@@ -63,7 +75,7 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
       await addParts(chosen.flatMap((p) => {
         const base = {
           project_id: projectId,
-          material: mapped(p.material || NO_MATERIAL).trim(),
+          material: mapped(p.material || NO_MATERIAL).trim() || ANY,
           thickness_mm: p.thickness_mm ?? Number(thickness),
           length_mm: p.length_mm,
           width_mm: p.width_mm,
@@ -98,19 +110,21 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
       <input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" onChange={(e) => e.target.files?.[0] && loadFile(e.target.files[0])} />
       <textarea rows={5} placeholder="Paste here" value={text} onChange={(e) => setText2(e.target.value)} />
       {result?.problems.map((p) => <p key={p} className="muted">{p}</p>)}
+      {parts.some((p) => p.alt) && <p className="muted">Rows marked ALT are alternatives. Tick one to use it instead of the original with the same code.</p>}
+      {result?.offcutsComeHome && <p className="muted">This list has a RESTEN row: the shop sends the offcuts home. Add them with Quick add when they arrive.</p>}
 
       {parts.length > 0 && (
         <>
           <h2>Materials</h2>
-          <p className="muted">Match each material in the sheet to the name you use in your stock, so "Match from stock" can find offcuts.</p>
+          <p className="muted">Match each material in the sheet to your stock name, so "Match from stock" can find offcuts. Use "Any" when the material doesn't matter, or "Any MTX", "Any MDF", "Any chipboard" for any variant of that type.</p>
           <div className="stack">
             {sheetMaterials.map((m) => (
               <label key={m} className="map-row">
                 <span>{m}</span>
-                <input list="stock-materials" value={mapped(m)} placeholder="Material" onChange={(e) => setMapping((s) => ({ ...s, [m]: e.target.value }))} />
+                <input list="stock-materials" value={mapped(m)} placeholder="Any" onChange={(e) => setMapping((s) => ({ ...s, [m]: e.target.value }))} />
               </label>
             ))}
-            <datalist id="stock-materials">{[...new Set([...MATERIALS, ...stockMaterials])].map((m) => <option key={m} value={m} />)}</datalist>
+            <datalist id="stock-materials">{[...new Set([...PART_MATERIAL_OPTIONS, ...MATERIALS, ...stockMaterials])].map((m) => <option key={m} value={m} />)}</datalist>
           </div>
           {(needsThickness || needsGrain) && (
             <div className="grid2">
@@ -124,9 +138,9 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
               <tbody>
                 {parts.map((p) => (
                   <tr key={p.row} className={excluded.has(p.row) ? 'excluded' : ''}>
-                    <td><input type="checkbox" checked={!excluded.has(p.row)} onChange={() => setExcluded((s) => { const n = new Set(s); if (n.has(p.row)) n.delete(p.row); else n.add(p.row); return n })} /></td>
-                    <td>{p.name}</td>
-                    <td>{mapped(p.material || NO_MATERIAL) || <span className="error">?</span>}</td>
+                    <td><input type="checkbox" checked={!excluded.has(p.row)} onChange={() => toggleRow(p)} /></td>
+                    <td>{p.name}{p.alt && <span className="badge">ALT</span>}</td>
+                    <td>{mapped(p.material || NO_MATERIAL) || ANY}</td>
                     <td>{p.thickness_mm ?? thickness}</td>
                     <td>{p.length_mm}</td>
                     <td>{p.width_mm}</td>
@@ -138,8 +152,8 @@ export function ImportParts({ projectId, onAdded, stockMaterials }: { projectId:
               </tbody>
             </table>
           </div>
-          <button disabled={busy || missingMaterial || total === 0} onClick={importAll}>
-            {missingMaterial ? 'Fill in every material first' : busy ? 'Importing…' : `Import ${total} part${total === 1 ? '' : 's'}`}
+          <button disabled={busy || total === 0} onClick={importAll}>
+            {busy ? 'Importing…' : `Import ${total} part${total === 1 ? '' : 's'}`}
           </button>
         </>
       )}
